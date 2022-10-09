@@ -1,0 +1,22 @@
+{
+    "batch_id": "ac15e22e62304a8c966bf5aab9d6f368",
+    "objects": [
+        {
+            "object_id": "c64affd81f804c439f4b9744697aeef6",
+            "data": [
+                {
+                    "key": "color",
+                    "value": "gold"
+                },
+                {
+                    "key": "country",
+                    "value": "ZW"
+                },
+                {
+                    "key": "demo",
+                    "value": false
+                }
+            ]
+        }
+    ]
+}

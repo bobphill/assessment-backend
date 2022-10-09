@@ -7,11 +7,14 @@ services:
     command:
       - postgres
     ports:
-      - 5432
+      - 5432:5432
     environment:
       POSTGRES_USER: testuser
       POSTGRES_PASSWORD: testpassword
       POSTGRES_DB: bb_db
+    volumes:
+      - './database:/var/lib/postgresql/data'
+
   app:
     restart: always
     depends_on:
@@ -26,3 +29,4 @@ services:
 
     volumes:
       - './assessment:/srv/app/assessment'
+      - './logs:/srv/app/logs'

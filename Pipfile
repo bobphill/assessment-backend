@@ -8,6 +8,7 @@ django = "==3.2.10"
 django-extensions = "==3.1.4"
 djangorestframework = "==3.11.2"
 psycopg2 = "==2.8.3"
+jsonschema = "==4.16.0"
 
 [dev-packages]
 werkzeug = "==0.16.0"

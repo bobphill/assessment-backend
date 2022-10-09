@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 import os
+import logging
 
 from pathlib import Path
 from urllib.parse import urlparse
@@ -26,6 +27,31 @@ SECRET_KEY = 'django-insecure-_usll*70at$8dg1_o59vi03#$ukqgs%c%gqx1h5%av9&6ymre(
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+# Turn the logging level to WARNING for production
+LOG_LEVEL = logging.DEBUG
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+#            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': '/srv/app/logs/assessment.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+#            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'batch_processing': {
+            'handlers': ['file'],
+#            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
 
 ALLOWED_HOSTS = [
     'localhost',
@@ -44,6 +70,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'batch_processing',
 ]
 
 MIDDLEWARE = [
@@ -130,7 +157,25 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/3.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# REST_FRAMEWORK = {
+#     "DEFAULT_AUTHENTICATION_CLASSES": [
+#         "rest_framework.authentication.BasicAuthentication",
+#         "rest_framework.authentication.SessionAuthentication",
+#     ],
+#     "DEFAULT_PARSER_CLASSES": [
+#         "rest_framework.parsers.FormParser",
+#         "rest_framework.parsers.JSONParser",
+#         "rest_framework.parsers.MultiPartParser",
+#         "rest_framework_csv.parsers.CSVParser",
+#         "rest_framework_xml.parsers.XMLParser",
+#         "rest_framework.parsers.FileUploadParser",
+#     ],
+# }
