@@ -49,34 +49,6 @@ class ClientRequestError(Exception):
 logger = logging.getLogger(__name__)
 
 
-class JSONSchemaParser(JSONParser):
-    """
-    Parser helper class
-    JSON schema validation approach from https://richardtier.com/2014/03/24/json-schema-validation-with-django-rest-framework/
-    """
-    def parse(self, stream, schema, media_type=None, parser_context=None):
-        data = super(JSONSchemaParser, self).parse(stream, media_type,
-                                                   parser_context)
-
-        schema_dict = None
-        try:
-            schema_dict = json.loads(
-                open(os.path.join(BASE_DIR, 'files', 'schema.json')).read()
-
-            )
-            logger.debug(f'Got schema dictionary {schema_dict}')
-        except Exception as e:
-            logger.debug(f'Exception obtaining JSON schema: {e}') # Should result in a 500 error
-            raise InternalServerError(e)
-
-        try:
-            #jsonschema.validate(data, schema_dict)
-            pass
-        except ValueError as error:
-            raise ParseError(detail=_('JSON does not conform to schema.'))
-        else:
-            return data
-
 def validate_json_against_schema(json_data):
     """
         JSON schema validation approach from https://richardtier.com/2014/03/24/json-schema-validation-with-django-rest-framework/
@@ -167,6 +139,7 @@ class Upload_Batch_File(APIView):
         """
         ## Accept data as either a POST body, or as a file
         batch_data = None
+        batch_dict = None
         file_obj = None
         try:
             # This part saves the uploaded file in its entirety.
@@ -174,20 +147,18 @@ class Upload_Batch_File(APIView):
             # We may also want to save it temporarily and then delete it
             # on successful completion of our tasks (keeping files triggering failures).
             # Certainly, for debugging purposes, there are advantages to retention
-            # form = Json_Doc_Upload_Form(request.POST, request.FILES)
-            # if form.is_valid():
-            #     form.save()
-            # else:
-            #     logger.error('Got no file from form')
-            #     # We don't have anything good. Complain to the caller.
-            #     return Response(
-            #         _(
-            #             'No data found in request. No file data in request.'
-            #         ),
-            #         status.HTTP_400_BAD_REQUEST
-            #     )
+            form = Json_Doc_Upload_Form(request.POST, request.FILES)
+            if not form.is_valid():
+                logger.error('Got no file from form')
+                # We don't have anything good. Complain to the caller.
+                return Response(
+                    _(
+                        'No data found in request. No file data in request.'
+                    ),
+                    status.HTTP_400_BAD_REQUEST
+                )
 
-            file_obj = request.FILES.get("file", None)
+            file_obj = request.FILES.get("json_doc", None)
             if file_obj:
                 # Note -- this assumes that we are guaranteed to be able to read the file data into
                 # memory without issue.  That MAY not be the case, in which case, more robust file
@@ -212,7 +183,8 @@ class Upload_Batch_File(APIView):
                 status.HTTP_400_BAD_REQUEST
             )
         try:
-            validate_json_against_schema(json.loads(batch_data))
+            batch_dict = json.loads(batch_data)
+            validate_json_against_schema(batch_dict)
         except ClientRequestError:
             return Response(
                 _(
@@ -238,7 +210,31 @@ class Upload_Batch_File(APIView):
 
 
         # DO STUFF
-        return Response(status.HTTP_200_OK)
+        # We have a dictionary. It should conform to schema.  Populate objects
+        try:
+            batch = Batch(batch_identifier=batch_dict['batch_id'])
+            logger.debug(f'Created batch {batch}')
+            batch.save()
+            batch_objects = []
+            for element in batch_dict['objects']:
+                batch_object = Batch_Object(object_identifier=element['object_id'], batch=batch)
+                logger.debug(f'Created batch_object {batch_object}')
+                batch_object.save()
+                batch_objects.append(batch_object)
+                data_objects = []
+                for item in element['data']:
+                    data_object = Batch_Object_Data_Item(key=item['key'], value=item['value'],
+                                                         object=batch_object)
+                    logger.debug(f'Created data_object {data_object}')
+                    data_object.save()
+                    data_objects.append(data_object)
+            return Response(status.HTTP_200_OK)
+        except Exception as e:
+            logger.error(f'Unexpected problem assembling JSON return: {e}')
+            return Response(
+                _("The server failed while processing the request."),
+                status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 class Upload_Batch_Body(APIView):
@@ -246,9 +242,6 @@ class Upload_Batch_Body(APIView):
     The view class for our batch processing method.
 
     """
-
-    #parser_classes = (JSONSchemaParser)
-    #content_negotiation_class = IgnoreClientContentNegotiation
 
     def __init__(self, **kwargs):
         """
@@ -292,7 +285,6 @@ class Upload_Batch_Body(APIView):
         batch_data = None
         batch_dict = None
         try:
-            # parser_classes called implicitly, according to
             # https://richardtier.com/2014/03/24/json-schema-validation-with-django-rest-framework/
             batch_data = request.data
             logger.debug(f'Data from request body is {batch_data}')
@@ -314,8 +306,7 @@ class Upload_Batch_Body(APIView):
         logger.debug('Got through to the end...')
         # DO STUFF
         try:
-            #batch_dict = json.loads(batch_data)
-            batch_dict = batch_data
+            batch_dict = batch_data # Data already comes in dictionary format.  Not so with other approaches
         except Exception as e:
             logger.error(f'Exception loading JSON data: {e}')
             return Response(
@@ -439,6 +430,8 @@ class RetrieveObjectArray(APIView):
     And for the sake of implementation, I'm just going to support a single key and/or value.  Yeah, it's lazy, but
     if I don't impose that limit, I need to add logic for AND and OR operations, and that probably exceeds the scope
     of this little exercise.
+
+    Also, there is no convenient way to search for null values.
     """
 
     def get(self, request, object_id=None):

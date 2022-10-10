@@ -28,7 +28,7 @@ class Batch_Object_Data_Item(models.Model):
     value = models.CharField(
         unique=False,
         max_length=128,
-        null=False,
+        null=True,
         blank=False,
         db_index=True,
         help_text=_(

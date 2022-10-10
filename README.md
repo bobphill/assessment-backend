@@ -105,3 +105,22 @@ migrations. This does **not** seed any users or super users.
 
 When adding a dependency to the `pipfile`, make sure to rerun `./scripts/run-local`, or run
 `docker-compose build`, or Docker will not properly pull in the new dep.
+
+### Notes
+
+I added the dependency for jsonschema for validation.
+There are 3 main routes:
+ - POST `/batch/body` with raw JSON as the request body
+ - GET `/batch/object/{object_id}` with the object ID as the last component of the path
+ - GET `/batch/object_list` with query parameters `key` and `value`
+The last choice is a bit controversial.  It is an easy, obvious one for
+debugging and quick implementation, but query parameters are
+exposed.  A POST (or perhaps a PUT - people can argue both ways)
+would be a better choice, because the input parameters could be in the
+request body, where HTTPS protects them from casual viewing.
+
+There are remnants of things I've tried and decided against doing,
+whether for time constraints or other reasons.  There are no doubt
+failures in corner-cases  that better (any) unit testing would turn up.
+
+
